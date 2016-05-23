@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Document</title>
+</head>
+<body>
+
+<h1>Info experiments</h1>
+
+<h2>Browser fingerprint</h2>
+
+<p>This will get the same ID in browser and incognito mode, it uses <a target="_blank" href="https://github.com/Valve/fingerprintjs2">fingerprint2</a>.</p>
+
+<div id="theid"></div>
+
+<!-- <script type="text/javascript" src="//cdn.jsdelivr.net/fingerprintjs2/1.1.4/fingerprint2.min.js"></script> -->
+
+<script type="text/javascript" src="fingerprint2-1.1.4.min.js"></script>
+
+<script type="text/javascript">
+	//	Options to id device/browser, ignoring the things that can skew the same browser on machine with multiple monitors 
+	//	Ref: https://github.com/Valve/fingerprintjs2/wiki/List-of-options
+	var options = {
+		detectScreenOrientation: false
+		,excludeTouchSupport: true
+		,excludeAvailableScreenResolution: true
+		,excludeScreenResolution: true
+		,excludeColorDepth: true
+	};
+
+	new Fingerprint2(options).get(function(result, components){
+		document.getElementById("theid").innerHTML = result;
+	});
+</script>
+
+
+<h2>Get IP addresses</h2>
+
+<p>This will get the IP addresses associated with this device, using a WebRTC trick - ie: it requires WebRTC, which <a target="_blank" href="http://caniuse.com/#feat=rtcpeerconnection">works with about 56% of all browsers</a></p>
+
+<div id="theip"></div>
+
+<script>
+//	Ref: http://stackoverflow.com/a/32841164
+function findIP(callback) {
+	var myPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection,
+		pc = new myPeerConnection({
+			iceServers: [{urls: "stun:stun.services.mozilla.com"}]
+		}, {
+			optional: [{RtpDataChannels: true}]
+		}),
+		noop = function() {},
+		capturedIPs = {},
+		ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/g,
+		ipCapture = function(ip) {
+			if (!capturedIPs[ip]){
+				capturedIPs[ip] = true;
+				callback(ip);
+			}
+		};
+
+	// create offer and set local description, using empty data channel
+ 	pc.createDataChannel("");
+	pc.createOffer(function(sdp) {
+		sdp.sdp.split('\n').forEach(function(line) {
+			if (line.indexOf('candidate') < 0) return;
+			line.match(ipRegex).forEach(ipCapture);
+		});
+		pc.setLocalDescription(sdp, noop, noop);
+	}, noop);
+
+	//	Listen for candidate events
+	pc.onicecandidate = function(ice) { 
+		if (!ice || !ice.candidate || !ice.candidate.candidate || !ice.candidate.candidate.match(ipRegex)){
+			return;
+		}
+		ice.candidate.candidate.match(ipRegex).forEach(ipCapture);
+	};
+};
+
+//	Find the ip Addresses
+//	Note: this will fail silently, if WebRTC is unavailable or blocked by a 3rd party, eg: adblock, so we should setup a timer or something.
+findIP(function(ip) {
+	document.getElementById("theip").innerHTML += "IP Address: " + ip + "<br/>";
+});
+</script>
+
+
+</body>
+</html>
