@@ -1,0 +1,373 @@
+<html>
+<head>
+	<title>Scan IP addresses and ports</title>
+	<style>
+		body, html {margin: 2rem;}
+		label {min-width: 10rem; display: inline-block; text-align: right; padding-right: 1rem;}
+		#result {width: 100%; min-height: 30rem}
+	</style>
+</head>
+<body>
+
+<h1>IP range scan example</h1>
+
+<p>Your IP address: <span id="your"></span> - scanning network: <span id="from"></span> : <span id="to"></span>...
+
+<div>
+	<label></label>
+	<div id="result">Findings IPs, please wait...</div>
+</div>
+
+
+
+<script>
+
+	var scanner = {
+		log: function(){
+			console.log.apply(console, arguments);
+		},
+		def: function(obj1, obj2){
+			for(var i in obj2) {if(obj2.hasOwnProperty(i)){
+				obj1[i] = obj2[i];
+			}}
+			return obj1;
+		},
+		resultTypes: {"timeout": "timeout", "open": "open", "closed": "closed", "blocked": "blocked"},
+		knownBlockedPorts: [0,1,7,9,11,13,15,17,19,20,21,22,23,25,37,42,43,53,77,79,87,95,101,102,103,104,109,110,111,113,115,117,119,123,135,139,143,179,389,465,512,513,514,515,526,530,531,532,540,556,563,587,601,636,993,995,2049,4045,6000],
+		isBlocked: function(port) {
+			for(var i = 0; i < scanner.knownBlockedPorts.length; i += 1) {
+				if(scanner.knownBlockedPorts[i] == port) {
+					return true;
+				}
+			}
+			return false;
+		},
+
+		maxCalls: 16,
+
+		currentCalls: 0,
+
+		callQueue: [],
+
+		scanIp: function(args){
+			var xhr,
+				start = (new Date).getTime(),
+				doneCall = function(args, type){
+					scanner.currentCalls -= 1;
+					args.cb({
+						ip: args.ip,
+						type: type,
+						port: args.port
+					});
+					if(scanner.callQueue.length > 0){
+						scanner.scanIp(scanner.callQueue.pop());
+					}
+				},
+				checkProgress = function(){
+					var diff = (new Date).getTime() - start;
+					if(xhr.readyState == 1) {
+						if(diff > args.timeout) {
+							xhr.abort();
+							doneCall(args, scanner.resultTypes.timeout);
+						} else {
+							setTimeout(checkProgress, args.progressTimeout);
+						}
+					} else {
+						if(diff < args.timeout) {
+							doneCall(args, scanner.resultTypes.open);
+						} else {
+							doneCall(args, scanner.resultTypes.closed);
+						}
+					}
+				};
+
+			args = scanner.def({
+				timeout: 2000,
+				progressTimeout: 500
+			}, args);
+
+			try {
+				if(!scanner.isBlocked(args.port)) {
+					if(scanner.currentCalls < scanner.maxCalls) {
+						xhr = new XMLHttpRequest();
+						xhr.open('GET', "http://" + args.ip + ":" + args.port);
+						xhr.send();
+						scanner.currentCalls += 1;
+						setTimeout(checkProgress, args.progressTimeout);
+					} else {
+						scanner.callQueue.push(args);
+					}
+				} else {
+					args.cb({type: scanner.resultTypes.blocked, ip: args.ip, port: args.port });
+				}
+			} catch(ex) {
+				scanner.log({error: 'Exception', message: ex.message});
+			}
+		},
+		scanPorts: function(args){
+			var results = [],
+				count = 0,
+				len = args.ports.length,
+				callback = function(result){
+					results.push(result);
+					count += 1;
+					if(args.immediate) {
+						args.immediate(result);
+					}
+					if(count == len && args.cb) {
+						args.cb(results);
+					}
+				};
+			for(var i = 0; i < args.ports.length; i += 1) {
+				//scanner.scanIp({ ip: ip, port: ports[i], cb: callback});
+
+
+				scanner.scanIp(scanner.def(args.options || {}, {
+					ip: args.ip,
+					port: args.ports[i],
+					cb: callback
+				}));
+
+
+			}
+		},
+		scanRange: function(args){
+			var results = [],
+				count = 0,
+				len = args.ips.length * args.ports.length,
+				callback = function(result){
+					results.push(result);
+					count += 1;
+					if(args.immediate) {
+						args.immediate(result);
+					}
+					if(count == len && args.cb) {
+						args.cb(results);
+					}
+				};
+			
+			for(var i = 0; i < args.ips.length; i += 1) {
+				for(var j = 0; j < args.ports.length; j += 1) {
+					scanner.scanIp(scanner.def(args.options || {}, {
+						ip: args.ips[i],
+						port: args.ports[j],
+						cb: callback
+					}));
+				}
+			}
+		},
+		scanNetwork: function(args){
+			//	Ref: http://stackoverflow.com/a/22927549
+			var getRange = function(start, end){
+				var startIp = start.split("."),
+					endIp = end.split("."),
+					ips = [];
+
+				startAddr = 
+					parseInt(startIp[0], 10) * 16777216 + 
+					parseInt(startIp[1], 10) * 65536 + 
+					parseInt(startIp[2], 10) * 256 + 
+					parseInt(startIp[3], 10);
+
+				endAddr = 
+					parseInt(endIp[0], 10) * 16777216 + 
+					parseInt(endIp[1], 10) * 65536 + 
+					parseInt(endIp[2], 10) * 256 + 
+					parseInt(endIp[3], 10);
+
+				for(var i = startAddr; i < endAddr; i++) {
+					var oc4 = (i>>24) & 0xff;
+					var oc3 = (i>>16) & 0xff;
+					var oc2 = (i>>8) & 0xff;
+					var oc1 = i & 0xff;
+					
+					ips.push(oc4 + "." + oc3 + "." + oc2 + "." + oc1);
+				}
+				return ips;				
+			};
+
+			scanner.scanRange(scanner.def(args, {
+				ips: getRange(args.fromIp, args.toIp)
+			}));
+		}
+	};
+
+	/*
+	scanner.scanNetwork({
+		fromIp: "192.168.1.1",
+		toIp: "192.168.2.3",
+		ports: [80], 
+		cb: function(result){
+			//	Just show open IPs
+			var filtered = result.filter(function(entry){
+				return entry.type == scanner.resultTypes.open;
+			});
+
+			scanner.log("Done network scan, found open on port 80", JSON.stringify(filtered, null, 4)); 
+		},
+		options: {
+			timeout: 3333
+		}
+	});
+*/
+
+/*
+	scanner.scanIp({
+		ip: "192.168.1.109",
+		port: 8080,
+		cb: function(result){scanner.log(result);}
+	});
+*/	
+/*
+	scanner.scanPorts({
+		ip: "192.168.1.109", 
+		ports: [8080, 8090, 8989, 1000], 
+		cb: function(result){
+			scanner.log("Done ports scan", JSON.stringify(result, null, 4)); 
+		}
+	});
+*/
+
+	/*
+	scanner.scanRange({
+		ips: ["192.168.1.109", "192.168.1.3", "192.168.1.38", "192.168.1.99"], 
+		ports: [80, 443, 8080, 8090, 8989, 1000], 
+		cb: function(result){
+			scanner.log("Done range scan", JSON.stringify(result, null, 4)); 
+		},
+		options: {
+			timeout: 3333
+		}
+	});
+*/
+
+
+	// var dom = function(id){
+	// 	return document.getElementById(id);
+	// };
+
+	// dom('go').onclick = function(){
+	// 	scanner.scanNetwork({
+	// 		fromIp: dom('start').value,
+	// 		toIp: dom('end').value,
+	// 		ports: [80], 
+	// 		immediate: function(result){
+	// 			dom('result').value += JSON.stringify(result) + "\n";
+	// 		},
+	// 		options: {
+	// 			timeout: dom('timeout').value
+	// 		}
+	// 	});
+
+	// };
+	
+
+</script>
+
+
+
+<script>
+//	Ref: http://stackoverflow.com/a/32841164
+function findIP(callback) {
+	var myPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection,
+		pc = new myPeerConnection({
+			iceServers: [{urls: "stun:stun.services.mozilla.com"}]
+		}, {
+			optional: [{RtpDataChannels: true}]
+		}),
+		noop = function() {},
+		capturedIPs = {},
+		ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3}|[a-f0-9]{1,4}(:[a-f0-9]{1,4}){7})/g,
+		ipCapture = function(ip) {
+			if (!capturedIPs[ip]){
+				console.log('IP', ip);
+				capturedIPs[ip] = true;
+				callback(ip);
+			}
+		};
+
+	// create offer and set local description, using empty data channel
+ 	pc.createDataChannel("");
+	pc.createOffer(function(sdp) {
+		sdp.sdp.split('\n').forEach(function(line) {
+			if (line.indexOf('candidate') < 0) return;
+			line.match(ipRegex).forEach(ipCapture);
+		});
+		pc.setLocalDescription(sdp, noop, noop);
+	}, noop);
+
+	//	Listen for candidate events
+	pc.onicecandidate = function(ice) { 
+		if (!ice || !ice.candidate || !ice.candidate.candidate || !ice.candidate.candidate.match(ipRegex)){
+			return;
+		}
+		ice.candidate.candidate.match(ipRegex).forEach(ipCapture);
+	};
+};
+
+//	Find the ip Addresses
+//	Note: this will fail silently, if WebRTC is unavailable or blocked by a 3rd party, eg: adblock, so we should setup a timer or something.
+findIP(function(ip) {
+	//document.getElementById("theip").innerHTML += "IP Address: " + ip + "<br/>";
+
+
+
+	var dom = function(id){
+		return document.getElementById(id);
+	};
+
+	var getRange = function(ip, isEnd){
+		var bits = ip.split('.');
+		return bits.slice(0,3).join(".") + "." + (isEnd? "255": "1")
+	};
+
+
+	var results = [];
+
+	var updateDisplay = function(){
+		var target = dom('result'),
+			load = '';
+		for(var i in results) {
+			var o = results[i];
+			load += '<a href="http://'+o.ip+'" target="_blank">' + JSON.stringify(o) + '</a><br>';
+		}
+		target.innerHTML = load;
+		//console.log('updated!')
+	};
+
+var options = {
+	fromIp: getRange(ip),
+	toIp: getRange(ip, true),
+	ports: [80], 
+	immediate: function(result){
+		//console.log(result);
+		if(result.type === "open") {
+			results.push(result);
+			updateDisplay();
+		}
+	},
+	options: {
+		timeout: 3000
+	}
+};
+
+	dom('from').innerHTML = options.fromIp
+	dom('to').innerHTML = options.toIp
+	dom('your').innerHTML = ip
+
+	//console.log(options);
+
+		scanner.scanNetwork(options);
+
+
+
+
+});
+</script>
+
+
+
+
+
+</body>
+</html>
