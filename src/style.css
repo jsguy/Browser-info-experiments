@@ -1,0 +1,60 @@
+body, html {margin: 2rem; color: #777; font-family: sans-serif;}
+a {text-decoration: none; color: #aaa;}
+label {min-width: 8rem; display: inline-block; text-align: right; padding-right: 1rem;}
+html {
+	min-height: 100%;
+	background: -webkit-radial-gradient(center, ellipse cover,  rgba(41,42,45,1) 0%,rgba(0,0,0,1) 100%); /* Chrome10+,Safari5.1+ */
+	background: -o-radial-gradient(center, ellipse cover,  rgba(41,42,45,1) 0%,rgba(0,0,0,1) 100%); /* Opera 12+ */
+	background: -ms-radial-gradient(center, ellipse cover,  rgba(41,42,45,1) 0%,rgba(0,0,0,1) 100%); /* IE10+ */
+	background: radial-gradient(ellipse at center,  rgba(41,42,45,1) 0%,rgba(0,0,0,1) 100%); /* W3C */
+}
+
+#scan {
+	padding: 0.5rem 2rem;
+	margin: 1rem 0;
+	display: inline-block;
+}
+
+.shadeBox {
+    padding: 0.5rem 2rem;
+    margin: 1rem 0;
+    box-shadow: inset 0px 0px 10px 2px rgba(117,182,255,0.5),
+                      0px 0px 30px 2px rgba(105,135,255,0.3);
+    display: block;
+}
+
+#result {width: 100%; min-height: 30rem; display: inline-block}
+
+.box {display: inline-block; margin: 0.5rem; padding: 0.5rem 1rem; border-radius: 3px; background: RGBA(200,200,255,0.5)}
+
+
+#scan.inprogress {
+	-webkit-animation: pulse 1s alternate infinite;
+	-moz-animation: pulse 1s alternate infinite;
+}
+
+@keyframes pulse {
+  0% {
+    background: rgba(255,255,255,1);
+    box-shadow: inset 0px 0px 10px 2px rgba(117,182,255,0.5),
+                      0px 0px 40px 2px rgba(105,135,255,1);
+  }
+  100% {
+    background: rgba(255,255,255,0);
+    box-shadow: inset 0px 0px 10px 2px rgba(117,182,255,0.5),
+                      0px 0px 30px 2px rgba(105,135,255,0.3);
+  }
+}
+  
+@-webkit-keyframes pulse {
+  0% {
+    background: rgba(255,255,255,1);
+    box-shadow: inset 0px 0px 10px 2px rgba(117,182,255,0.5),
+                      0px 0px 40px 2px rgba(105,135,255,1);
+  }
+  100% {
+    background: rgba(255,255,255,0);
+    box-shadow: inset 0px 0px 10px 2px rgba(117,182,255,0.5),
+                      0px 0px 30px 2px rgba(105,135,255,0.3);
+  }
+}
