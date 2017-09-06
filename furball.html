@@ -25,6 +25,8 @@
 <script>
 var dom = function(id){return document.getElementById(id); };
 
+//http://local.dev/projects/Browser-info-experiments/furball.html
+
 //	Find the ip Addresses
 //	Note: this will fail silently, if WebRTC is unavailable or blocked by a 3rd party, eg: adblock, so we should setup a timer or something.
 findIP(function(ip) {
@@ -32,16 +34,32 @@ findIP(function(ip) {
 		var bits = ip.split('.');
 		return bits.slice(0,3).join(".") + "." + (isEnd? "255": "1")
 	},
-	results = [];
+	results = {},
+	shown = [],
+	rIndex = 0,
+	max = 9;
 
 	var updateDisplay = function(){
 		var target = dom('result'),
-			load = '';
+			load = '',
+			changed = false;
 		for(var i in results) {
 			var o = results[i];
-			load += '<a class="box" href="http://'+o.ip+'" target="_blank" title="'+JSON.stringify(o)+'">' + o.ip + '</a> ';
+			if(shown.indexOf(o.ip) == -1 && rIndex < max) {
+				//load += '<a class="box" href="http://'+o.ip+'" target="_blank" title="'+JSON.stringify(o)+'">' + o.ip + '</a> ';
+				load += '<div class="wrap">' +
+					'<iframe class="frame" src="http://'+o.ip+'"></iframe>' +
+					'<a class="box" href="http://'+o.ip+'" target="_blank" title="'+JSON.stringify(o)+'"></a>' + 
+				'</div>';
+				rIndex += 1;
+				changed = true;
+				shown.push(o.ip);
+			}
 		}
-		target.innerHTML = load;
+		if(changed) {
+			console.log('redraw');
+			target.innerHTML += load;
+		}
 	};
 
 	var options = {
@@ -50,7 +68,8 @@ findIP(function(ip) {
 		ports: [80], 
 		immediate: function(result){
 			if(result.type === "open") {
-				results.push(result);
+				//results.push(result);
+				results[result.ip] = result;
 				updateDisplay();
 			}
 		},

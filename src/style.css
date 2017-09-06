@@ -25,7 +25,14 @@ html {
 
 #result {width: 100%; min-height: 30rem; display: inline-block}
 
-.box {display: inline-block; margin: 0.5rem; padding: 0.5rem 1rem; border-radius: 3px; background: RGBA(200,200,255,0.5)}
+.box {
+  display: inline-block;
+  margin: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 3px;
+  Xbackground: RGBA(200,200,255,0.5);
+  position: absolute;
+}
 
 
 #scan.inprogress {
@@ -57,4 +64,34 @@ html {
     box-shadow: inset 0px 0px 10px 2px rgba(117,182,255,0.5),
                       0px 0px 30px 2px rgba(105,135,255,0.3);
   }
+}
+
+.wrap, .box {
+    width: 320px;
+    height: 192px;
+    padding: 0;
+    overflow: hidden;
+    display: inline-block;
+    margin: 0.5rem
+}
+
+.wrap {position: relative; background: #fff;}
+
+.frame {
+  position: absolute;
+  top: 0;
+    width: 1280px;
+    height: 786px;
+    border: 0;
+    -ms-transform: scale(0.25);
+    -moz-transform: scale(0.25);
+    -o-transform: scale(0.25);
+    -webkit-transform: scale(0.25);
+    transform: scale(0.25);
+    
+    -ms-transform-origin: 0 0;
+    -moz-transform-origin: 0 0;
+    -o-transform-origin: 0 0;
+    -webkit-transform-origin: 0 0;
+    transform-origin: 0 0;
 }
